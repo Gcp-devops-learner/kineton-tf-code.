@@ -1,0 +1,41 @@
+# apiVersion: batch/v1
+# kind: CronJob
+# metadata:
+#   name: curljob
+# spec:
+#   jobTemplate:
+#     metadata:
+#       name: curljob
+#     spec:
+#       template:
+#         metadata:
+#         spec:
+#           containers:
+#           - command:
+#             - curl
+#             - http://nginx-server-service.default.svc/customdir/index.html
+#             image: europe-west8-docker.pkg.dev/km1-runcloud/charan-alpine/new-alpine:v2
+#             imagePullPolicy: Always
+#             name: curljob
+#           restartPolicy: OnFailure
+#   schedule: '17 9 * * *'
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: "40 10 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: europe-west8-docker.pkg.dev/km1-runcloud/charan-nginx/new-nginx:v2
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster
+          restartPolicy: OnFailure

@@ -1,0 +1,99 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kamp
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "kubernetes-ingress"  
+spec: 
+  defaultBackend:
+      service:
+        name: kamp
+        port:
+          number: 80  
+  rules:
+  - http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: kamp
+            port:
+              number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kamp
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http 
+  selector:
+    app: kamp
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kamp
+  # namespace: "default"
+  labels:
+    app: "kamp"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kamp
+  template:
+    metadata:
+      labels:
+        app: kamp
+    spec:
+      containers:
+        - name: kamp
+          image: europe-west8-docker.pkg.dev/km1-runcloud/charan-nginx/new-nginx:v2
+            #       imagePullPolicy: Always
+          resources:
+            requests:
+             cpu: "250m"
+             memory: "200Mi"
+            limits:
+             cpu: "2"  
+             memory: "1600Mi"  
+          ports:
+            - name: http
+              containerPort: 80
+          # readinessProbe:
+          #   httpGet:
+          #     path: /healthz
+          #     port: 80
+          #     scheme: HTTP
+          #   initialDelaySeconds: 5
+          #   timeoutSeconds: 1  
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: kamp
+spec:
+  maxReplicas: 60
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kamp
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+
+

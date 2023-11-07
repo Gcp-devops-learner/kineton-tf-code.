@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kamp
+  # namespace: "default"
+  labels:
+    app: "kamp"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kamp
+  template:
+    metadata:
+      labels:
+        app: kamp
+    spec:
+      containers:
+        - name: kamp
+          image: europe-west8-docker.pkg.dev/km1-runcloud/mydocker-art-repo/test-art-demo02:v1
+            #          imagePullPolicy: Always
+          resources:
+            requests:
+             cpu: "250m"
+             memory: "200Mi"
+            limits:
+             cpu: "2"  
+             memory: "1600Mi"  
+          ports:
+            - name: http
+              containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 5
+            timeoutSeconds: 1  

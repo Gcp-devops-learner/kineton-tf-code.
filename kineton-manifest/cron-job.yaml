@@ -1,0 +1,75 @@
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cron-runner
+rules:
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["patch", "get"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cron-runner
+subjects:
+- kind: ServiceAccount
+  name: sa-cron-runner
+    # namespace: production
+roleRef:
+  kind: Role
+  name: cron-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-cron-runner
+---
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scale-up-job
+spec:
+  schedule: "59 11 * * *"
+  successfulJobsHistoryLimit: 0 
+  failedJobsHistoryLimit: 1 
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: sa-cron-runner
+          containers:
+          - name: scale-up-job
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/sh
+            - -c
+            - kubectl patch hpa kamp --patch '{"spec":{"minReplicas":50}}'
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scale-down-job
+spec:
+  schedule: "10 12 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 0 
+  failedJobsHistoryLimit: 1 
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: sa-cron-runner
+          containers:
+          - name: scale-down-job
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/sh
+            - -c
+            - kubectl patch hpa kamp --patch '{"spec":{"minReplicas":1}}'
+          restartPolicy: OnFailure
